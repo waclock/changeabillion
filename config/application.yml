@@ -1,0 +1,14 @@
+SECRET_KEY_BASE: aa241222b7d8f74f7e3c88649a77b9479335f7d7e2939438dd2870faea5f9c59e4a13ced52b6cbd93afcac41eb5c69e62f50259c9054f9546201363359632dee
+DB_PASSWORD: 259c9054f95462013633596
+
+APP_URL: https://changeabillion.org
+LANDING_URL: https://changeabillion.org
+
+development:
+  S3_BUCKET_NAME: changeabillion
+
+staging:
+  S3_BUCKET_NAME: changeabillion
+  
+production:
+  S3_BUCKET_NAME: changeabillion

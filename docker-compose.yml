@@ -1,0 +1,99 @@
+#version: Es la versión de docker-compose que se va a utilizar. La última que ha salido es la 2
+version: '2'
+
+#services: Servicios que la app utilizará. En este caso se indica que se crearán dos servicios, uno llamado postgres, y otro web. Cada servicio se corresponde con una imagen.
+services:
+  web:
+    #image: indica qué imagen va a bajar para correr el servicio
+    # image: 355645112541.dkr.ecr.us-east-1.amazonaws.com/coinorigami/web:1516998576
+    #build: indica que va a compilar este service (recibe un path como parametro). Utiliza el Dockerfile que encuentre en ese path.
+    build: ./
+    command: 
+      - "/bin/bash"
+      - "-l"
+      - "-c"
+      - "bundle install && DISABLE_DATABASE_ENVIRONMENT_CHECK=1 bundle exec rake db:migrate db:seed && ./Startfile.sh"
+      # - "bundle install && bundle exec rake db:migrate && ./Startfile.sh"
+      # - "./Startfile.sh"
+    #volumes: MUY IMPORTANTE. Mientras se esté en development, todas las referencias a la carpeta “/webapp” se harán al directorio del proyecto “.”, y no a la carpeta de la imagen compilada de docker. Esto facilita el desarrollo, ya que los archivos se editan en tiempo real
+    volumes:
+      - ./:/webapp/
+      - gems-data:/ruby_gems
+    working_dir: /webapp/
+    #para usar byebug
+    stdin_open: true
+    tty: true
+    #ports: indica que puertos expondrá este servicio
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    links:
+      - postgres
+  sidekiq:
+    build: ./
+    volumes:
+      - ./:/webapp/
+      - gems-data:/ruby_gems
+    working_dir: /webapp/
+    command: 
+      - "/bin/bash"
+      - "-l"
+      - "-c"
+      - ./Sidekiq.sh
+    environment:
+      REDIS_URL: redis://redis
+      RACK_ENV: development
+      RAILS_ENV: development
+    depends_on:
+      - postgres
+      - redis
+    links:
+      - postgres
+      - redis
+  sidekiq-critical:
+    build: ./
+    volumes:
+      - ./:/webapp/
+      - gems-data:/ruby_gems
+    working_dir: /webapp/
+    command: 
+      - "/bin/bash"
+      - "-l"
+      - "-c"
+      - "bundle exec sidekiq -C config/sidekiq-critical.yml"
+    environment:
+      REDIS_URL: redis://redis
+      RACK_ENV: development
+      RAILS_ENV: development
+    depends_on:
+      - postgres
+      - redis
+    links:
+      - postgres
+      - redis
+  postgres:
+    image: postgres:9.6.1
+    ports:
+      - "5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+  cron:
+    image: mispistachos/cron-light:0.7.6
+    # build: ./cron-light
+    depends_on:
+      - postgres
+    links:
+      - postgres
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  redis:
+    image: redis:3.2.5
+    ports:
+      - "6379"
+    volumes:
+      - redis-data/data
+volumes:
+  gems-data:
+  postgres-data:
+  redis-data:
